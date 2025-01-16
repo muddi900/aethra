@@ -1,18 +1,25 @@
 import networkx as nx
 from typing import Callable, Dict, List, Optional
 from aethra.graph.filters.base_filter import BaseGraphFilter
-import numpy as np 
+from pydantic import BaseModel
+import numpy as np
+
+
+class ConversationFlowAnalysisResponse(BaseModel):
+    transition_matrix: List[List[float]]
+    intent_by_cluster: Dict[int, str]
+
+
 class GraphProcessor:
-    def __init__(self, transition_matrix: List[List[float]], intent_by_cluster: Dict[int, str]):
+    def __init__(self, analysis: ConversationFlowAnalysisResponse):
         """
         Initialize the GraphProcessor with the transition matrix and intent-to-cluster mapping.
 
         Args:
-            transition_matrix (List[List[float]]): The transition matrix from the API.
-            intent_by_cluster (Dict[int, str]): Mapping of intent cluster IDs to descriptions.
+            analysis (ConversationFlowAnalysisResponse): The response object containing transition matrix
         """
-        self.transition_matrix = transition_matrix
-        self.intent_by_cluster = intent_by_cluster
+        self.transition_matrix = analysis.transition_matrix
+        self.intent_by_cluster = analysis.intent_by_cluster
         self.graph = self._construct_graph()
 
     def _construct_graph(self) -> nx.DiGraph:
@@ -39,9 +46,15 @@ class GraphProcessor:
         Returns:
             nx.DiGraph: The filtered graph.
         """
-        transition_matrix_array = np.array(self.transition_matrix) if not isinstance(self.transition_matrix, np.ndarray) else self.transition_matrix
+        transition_matrix_array = (
+            np.array(self.transition_matrix)
+            if not isinstance(self.transition_matrix, np.ndarray)
+            else self.transition_matrix
+        )
 
-        return filter_strategy.apply(self.graph, transition_matrix_array, self.intent_by_cluster)
+        return filter_strategy.apply(
+            self.graph, transition_matrix_array, self.intent_by_cluster
+        )
 
     def visualize_graph(self, graph: Optional[nx.DiGraph] = None) -> None:
         """
@@ -53,6 +66,6 @@ class GraphProcessor:
         if graph is None:
             graph = self.graph
         pos = nx.spring_layout(graph)
-        nx.draw(graph, pos, with_labels=True, node_color='lightblue', edge_color='gray')
-        labels = nx.get_edge_attributes(graph, 'weight')
+        nx.draw(graph, pos, with_labels=True, node_color="lightblue", edge_color="gray")
+        labels = nx.get_edge_attributes(graph, "weight")
         nx.draw_networkx_edge_labels(graph, pos, edge_labels=labels)
